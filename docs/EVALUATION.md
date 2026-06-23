@@ -4,7 +4,7 @@ This document backs the plugin's central claim and shows how to test it. It deli
 
 ## What we claim / don't claim
 
-- **Claim:** an independent, blinded critic that reviews a draft *after* it is written, followed by one revision, measurably reduces sycophantic content versus the same model answering directly.
+- **Claim (hypothesis + design rationale):** an independent, blinded critic that reviews a draft *after* it is written, followed by one revision, is *designed to* reduce sycophantic content versus the same model answering directly — and this document gives a protocol to measure whether it actually does. Full before/after runs are still an open item (see below); the prototype check that *has* run is summarized under "validated so far".
 - **Don't claim:** that sycophancy is eliminated (its root is in the weights, not the prompt), that a soft Claude Code plugin enforces the review (it doesn't — see the README), or that the numbers below transfer 1:1 to your domain.
 
 ## Why an architectural layer (not just a prompt)

@@ -2,7 +2,7 @@
 
 > A Claude Code plugin that adds independent **critic subagents** which review the assistant's drafts for **sycophancy** — flattery, ungrounded agreement, taking sides, status verdicts — before they reach you.
 
-**Status: `0.2.0` — early walking skeleton.** It installs and runs end-to-end, with couple and solo modes and a content-free metrics log. It is intentionally minimal. See [Limitations](#limitations).
+**Status: `0.2.1` — early walking skeleton.** It installs and runs end-to-end, with couple and solo modes and a content-free metrics log. It is intentionally minimal. See [Limitations](#limitations).
 
 ## Why
 
@@ -10,7 +10,7 @@ Sycophancy (telling you what you want to hear) is rooted in how models are train
 
 ## What you get
 
-Four critic/orchestration subagents + skills to toggle the mode:
+Four critic subagents + an `as-orchestrator`, plus skills to toggle the mode:
 
 | Subagent | Role | When it runs | Model |
 |---|---|---|---|
@@ -76,6 +76,8 @@ Two deterministic guards keep it calibrated (baked into the protocol, no code re
 - The plugin writes a **content-free** local log at `.claude/as-metrics.jsonl`: counts and verdicts only (mode, whether the blinded critic flagged, the relational verdict, whether safety escalated, whether a rewrite happened). **Never** the text of any message.
 - A deterministic `SubagentStop` hook records that a subagent finished, as a rough cross-check. You can remove `hooks/` if you don't want it.
 - **No telemetry, no network calls, nothing is sent anywhere.** `/as-metrics` summarizes the log locally. Sharing the file is a manual, opt-in action.
+- **Local content does flow between subagents.** The sighted critics (`as-guardian`, `as-solo-guardian`, `as-safety`) receive verbatim quotes — including names — to do their job. This happens entirely on your machine, as subagents in your own session; nothing is transmitted. The blinded critic (`as-critic-blind`) never receives identities.
+- If your project is a git repo, add `.claude/as-metrics.jsonl` to its `.gitignore` so the local metrics file isn't committed by accident.
 - This is a tool for sensitive conversations — privacy is a design constraint, not an afterthought.
 
 ## Limitations (read this)
