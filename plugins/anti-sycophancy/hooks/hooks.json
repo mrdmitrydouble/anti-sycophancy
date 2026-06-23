@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '{\"ts\":\"%s\",\"event\":\"subagent_stop\"}\\n' \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" >> \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/as-metrics.jsonl\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

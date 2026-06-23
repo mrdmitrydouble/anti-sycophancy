@@ -2,23 +2,24 @@
 
 > A Claude Code plugin that adds independent **critic subagents** which review the assistant's drafts for **sycophancy** — flattery, ungrounded agreement, taking sides, status verdicts — before they reach you.
 
-**Status: `0.1.0` — early walking skeleton.** It installs and runs end-to-end, but it is intentionally minimal. See [Limitations](#limitations).
+**Status: `0.2.0` — early walking skeleton.** It installs and runs end-to-end, with couple and solo modes and a content-free metrics log. It is intentionally minimal. See [Limitations](#limitations).
 
 ## Why
 
-Sycophancy (telling you what you want to hear) is rooted in how models are trained — it is not reliably fixed by a single prompt. The mitigation here is **architectural**: a separate, blinded critic reviews the draft *after* it is written, with no stake in pleasing you, and the assistant revises based on the critique. This is the most a prompt-level tool can honestly do — and it is genuinely useful.
+Sycophancy (telling you what you want to hear) is rooted in how models are trained — it is not reliably fixed by a single prompt. The mitigation here is **architectural**: a separate, blinded critic reviews the draft *after* it is written, with no stake in pleasing you, and the assistant revises based on the critique. This is the most a prompt-level tool can honestly do — and it is genuinely useful. See [`docs/EVALUATION.md`](docs/EVALUATION.md) for the evidence and how to measure it.
 
 ## What you get
 
-Three critic subagents + an orchestration protocol:
+Four critic/orchestration subagents + skills to toggle the mode:
 
 | Subagent | Role | When it runs | Model |
 |---|---|---|---|
-| `as-critic-blind` | **Textual sycophancy** — flattery, ungrounded agreement, status verdicts ("you're right"), face-saving, leading framing. Receives only a *blinded*, normalized request type + the draft — nothing to please. | Always | `sonnet` |
-| `as-guardian` | **Relational balance** — did the reply take a side, strengthen one party, erase or misattribute the other? Sighted, but narrow: only asymmetry. | Only when there's a second / absent side | `sonnet` |
+| `as-critic-blind` | **Textual sycophancy** — flattery, ungrounded agreement, status verdicts ("you're right"), face-saving, leading framing, and ontological verdicts about *you* ("you are X"). Receives only a *blinded*, normalized request type + the draft — nothing to please. | Always | `sonnet` |
+| `as-guardian` | **Relational balance (couple/group)** — did the reply take a side, strengthen one party, erase or misattribute the other? Sighted, narrow: only asymmetry. | Couple mode, when a second side is present | `sonnet` |
+| `as-solo-guardian` | **Fairness to the absent (solo)** — when you discuss someone who isn't here, did the reply convict them in absentia, diagnose-by-proxy, or erase their likely position? | Solo mode, when an absent person is discussed | `sonnet` |
 | `as-safety` | **Crisis & clinical overreach** — escalate to a human; catch diagnosis/dosage overreach. Narrow, binary verdict. | Only when a deterministic gate fires | `opus` |
 
-Plus `as-orchestrator`, which runs the whole protocol, and three skills to toggle the mode.
+Plus `as-orchestrator`, which runs the whole protocol.
 
 ## Install
 
@@ -30,14 +31,23 @@ Plus `as-orchestrator`, which runs the whole protocol, and three skills to toggl
 ## Use
 
 ```text
-/as-on        # turn the review mode on
-/as-status    # check whether it's on or off
-/as-off       # turn it off
+/as-on        # turn on (auto: relational critic chosen per turn)
+/as-couple    # force couple/group mode (as-guardian)
+/as-solo      # force solo mode (as-solo-guardian)
+/as-status    # check current state
+/as-off       # turn off
+/as-metrics   # show the local, content-free metrics summary
 ```
 
-When the mode is on, every substantive reply is drafted, routed through the critics, and revised before you see it. Trivial turns (acknowledgements, clarifying questions, raw tool output) are skipped.
+When the mode is on, every substantive reply is drafted, routed through the critics, revised, and a content-free metric line is logged before you see it. Trivial turns (acknowledgements, clarifying questions, raw tool output) are skipped.
 
 You can also delegate a single turn explicitly to the `as-orchestrator` agent.
+
+## Modes
+
+- **Couple / group** — mediating a conversation between two or more people who are present. Relational critic: `as-guardian` (balance between the present parties).
+- **Solo** — one person reflecting alone. Relational critic: `as-solo-guardian` (fairness to a person who is *not* here, when one is discussed). For pure self-analysis there's no second side, so the relational critic is `n/a` and `as-critic-blind` still guards against verdicts about your own identity.
+- **Auto** (`/as-on`) — the orchestrator picks the right relational critic from the turn itself.
 
 ## How it works
 
@@ -45,16 +55,28 @@ You can also delegate a single turn explicitly to the `as-orchestrator` agent.
 your turn
    │
    ▼
-draft answer ──► as-critic-blind  (always; blinded input: neutral request type + draft)
-   │            └─► as-guardian   (only if a 2nd/absent side exists; verbatim quotes + draft)
-   │            └─► as-safety     (only if the crisis/diagnosis gate fires)
+draft answer ──► as-critic-blind   (always; blinded input: neutral request type + draft)
+   │            └─► relational critic:
+   │                  • as-guardian       (couple: 2+ present parties)
+   │                  • as-solo-guardian  (solo: an absent person is discussed)
+   │                  • (n/a for pure self-analysis)
+   │            └─► as-safety        (only if the crisis/diagnosis gate fires)
    ▼
 rewrite once per the critics' instructions ──► final answer
+   │
+   └─► append a content-free metric line to .claude/as-metrics.jsonl
 ```
 
 Two deterministic guards keep it calibrated (baked into the protocol, no code required):
-1. **Balance n/a without a second side** — solo introspection never gets flagged for "imbalance".
+1. **Balance/fairness n/a without a second side** — solo self-analysis is never flagged for "imbalance".
 2. **Crisis/diagnosis gate** — the expensive safety critic only runs on a real lexical trigger, which keeps it rare and avoids over-escalation.
+
+## Metrics & privacy
+
+- The plugin writes a **content-free** local log at `.claude/as-metrics.jsonl`: counts and verdicts only (mode, whether the blinded critic flagged, the relational verdict, whether safety escalated, whether a rewrite happened). **Never** the text of any message.
+- A deterministic `SubagentStop` hook records that a subagent finished, as a rough cross-check. You can remove `hooks/` if you don't want it.
+- **No telemetry, no network calls, nothing is sent anywhere.** `/as-metrics` summarizes the log locally. Sharing the file is a manual, opt-in action.
+- This is a tool for sensitive conversations — privacy is a design constraint, not an afterthought.
 
 ## Limitations (read this)
 
@@ -63,11 +85,17 @@ Two deterministic guards keep it calibrated (baked into the protocol, no code re
 - **Critic prompts are currently in Russian.** They were validated on Russian-language material; they still reason over drafts in any language, but an English localization is not yet validated.
 - **Single-pass.** One rewrite iteration in this skeleton.
 
-## Privacy
+## Repo layout
 
-- The plugin adds **no data collection**. There is no telemetry, no network calls, nothing sent anywhere.
-- A metrics log (counts only, never message content) is planned for a later version and will be **opt-in and local**.
-- This is a tool for sensitive conversations — privacy is a design constraint, not an afterthought.
+```
+.claude-plugin/marketplace.json      # marketplace manifest
+plugins/anti-sycophancy/
+├── .claude-plugin/plugin.json       # plugin manifest
+├── agents/                          # as-critic-blind, as-guardian, as-solo-guardian, as-safety, as-orchestrator
+├── skills/                          # as-on, as-couple, as-solo, as-off, as-status, as-metrics
+└── hooks/hooks.json                 # deterministic metrics cross-check
+docs/EVALUATION.md                   # evidence base + how to measure before/after
+```
 
 ## License
 
