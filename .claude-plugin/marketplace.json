@@ -1,0 +1,15 @@
+{
+  "name": "anti-sycophancy",
+  "description": "Anti-sycophancy plugin for Claude Code — independent critic subagents that catch flattery and ungrounded agreement in the assistant's drafts.",
+  "owner": {
+    "name": "Dmitry Rubin"
+  },
+  "plugins": [
+    {
+      "name": "anti-sycophancy",
+      "source": "./plugins/anti-sycophancy",
+      "description": "Independent critic subagents that review drafts for sycophancy before they reach you. Toggle on/off.",
+      "version": "0.1.0"
+    }
+  ]
+}
