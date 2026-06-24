@@ -26,9 +26,9 @@ release fixes packaging and the safety *wrapping* around it.
 - **Non-clinical disclaimer** in the README (before Install) and a one-line version
   surfaced by `/as-on`, `/as-couple`, `/as-solo`: not therapy, not diagnosis, not an
   emergency service; the safety gate is best-effort and must not be relied on for safety.
-- **Deterministic safety floor.** On hard-crisis gate classes (T1/T2/T3/T6/T8) the
-  orchestrator never leaves a turn with zero safety surface, even when the single-LLM
-  safety critic returns `continue`.
+- **Deterministic safety floor.** On any crisis gate class (T1–T9) the orchestrator never
+  leaves a turn with zero safety surface, even when the single-LLM safety critic returns
+  `continue` — unless that `continue` is explicitly grounded as past narrative/metaphor.
 - **Diagnosis-request trigger (C12-REQ).** The gate now fires when the *user* asks to be
   diagnosed (not only when the draft over-reaches) and routes to psychoeducation instead
   of naming a diagnosis.
